@@ -1,0 +1,13 @@
+# requirements.txt
+# Dependencias del módulo Python de Alertas SIMCII.
+#
+# Paquetes requeridos:
+# - Flask: Framework web para la API REST
+# - Flask-CORS: Soporte para CORS en Flask
+# - requests: Cliente HTTP para comunicación con servicio Java
+# - python-dotenv: Manejo de variables de entorno
+
+Flask==2.3.3
+Flask-CORS==4.0.0
+requests==2.31.0
+python-dotenv==1.0.0
