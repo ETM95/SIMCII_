@@ -14,17 +14,50 @@ import jakarta.annotation.PostConstruct;
 import java.util.List;
 import java.util.Random;
 
+/**
+ * Servicio para la gestión de umbrales y generación de valores de lectura en el sistema SIMCII.
+ * Proporciona funcionalidades para inicialización automática de umbrales por defecto,
+ * generación de lecturas realistas basadas en configuración de umbrales, y operaciones
+ * CRUD para la gestión de rangos de alerta en el sistema de monitoreo.
+ * 
+ * @author Jonathan Vega
+ * @version 1.0
+ * @since 2025
+ * @Service
+ * @see Umbral
+ * @see Dispositivo
+ * @see PostConstruct
+ */
 @Service
 public class UmbralService {
     
+    /**
+     * Repositorio para acceso a datos de umbrales.
+     * Inyectado automáticamente por Spring Framework.
+     */
     @Autowired
     private UmbralRepository umbralRepository;
     
+    /**
+     * Repositorio para acceso a datos de dispositivos.
+     * Utilizado para obtener sensores durante la inicialización.
+     */
     @Autowired
     private DispositivoRepository dispositivoRepository;
     
+    /**
+     * Generador de números aleatorios para simulación de lecturas realistas.
+     */
     private Random random = new Random();
     
+    /**
+     * Inicializa umbrales por defecto para todos los sensores activos del sistema.
+     * Se ejecuta automáticamente después de la construcción del servicio.
+     * Crea configuraciones específicas según el tipo de sensor (temperatura, humedad, luz)
+     * solo si no existen umbrales previamente configurados.
+     * 
+     * @PostConstruct
+     */
     @PostConstruct
     public void inicializarUmbralesPorDefecto() {
         System.out.println("=== INICIALIZANDO UMBRALES POR DEFECTO ===");
@@ -55,6 +88,17 @@ public class UmbralService {
         }
     }
     
+    /**
+     * Crea un umbral por defecto específico para el tipo de sensor.
+     * Configura rangos realistas basados en el tipo de sensor para condiciones
+     * óptimas de cultivo en invernadero.
+     * 
+     * @param sensor Sensor para el cual crear el umbral
+     * @return Umbral configurado con valores por defecto apropiados
+     * @see SensorTemperatura
+     * @see SensorHumedad
+     * @see SensorLuz
+     */
     private Umbral crearUmbralPorDefecto(Dispositivo sensor) {
         Umbral umbral = new Umbral();
         umbral.setDispositivo(sensor);
@@ -82,6 +126,15 @@ public class UmbralService {
         return umbral;
     }
     
+    /**
+     * Genera un valor de lectura realista basado en los umbrales configurados para un dispositivo.
+     * Utiliza los rangos mínimo y máximo del umbral activo para generar valores coherentes
+     * que simulan lecturas reales de sensores en condiciones de invernadero.
+     * 
+     * @param dispositivo Dispositivo para el cual generar la lectura
+     * @return Double con un valor de lectura realista dentro del rango configurado
+     * @implNote Incluye fallback a valores por defecto si no se encuentran umbrales configurados
+     */
     public Double generarValorSegunUmbral(Dispositivo dispositivo) {
         try {
             List<Umbral> umbrales = umbralRepository.findByDispositivo(dispositivo);
@@ -101,10 +154,16 @@ public class UmbralService {
             System.err.println("Error generando valor desde umbral: " + e.getMessage());
         }
         
-        // Fallback a valores por defecto
         return generarValorPorDefecto(dispositivo);
     }
     
+    /**
+     * Genera un valor de lectura por defecto cuando no hay umbrales configurados.
+     * Proporciona rangos genéricos apropiados para cada tipo de sensor como respaldo.
+     * 
+     * @param dispositivo Dispositivo para el cual generar el valor por defecto
+     * @return Double con un valor de lectura genérico
+     */
     private Double generarValorPorDefecto(Dispositivo dispositivo) {
         if (dispositivo instanceof SensorTemperatura) {
             return 15 + (random.nextDouble() * 20);
@@ -116,15 +175,34 @@ public class UmbralService {
         return random.nextDouble() * 100;
     }
 
-    // Revisar esto
+    /**
+     * Guarda o actualiza un umbral en el sistema.
+     * 
+     * @param umbral Umbral a guardar o actualizar
+     * @return Umbral el umbral guardado con su ID asignado
+     * @see UmbralRepository#save(Object)
+     */
     public Umbral guardarUmbral(Umbral umbral) {
         return umbralRepository.save(umbral);
     }
     
+    /**
+     * Obtiene un umbral específico por su identificador único.
+     * 
+     * @param id Identificador único del umbral a buscar
+     * @return Umbral encontrado o null si no existe
+     * @see UmbralRepository#findById(Long)
+     */
     public Umbral obtenerUmbralPorId(Long id) {
         return umbralRepository.findById(id).orElse(null);
     }
     
+    /**
+     * Desactiva un umbral específico sin eliminarlo permanentemente.
+     * El umbral permanece en la base de datos pero deja de generar alertas.
+     * 
+     * @param id Identificador único del umbral a desactivar
+     */
     public void desactivarUmbral(Long id) {
         Umbral umbral = umbralRepository.findById(id).orElse(null);
         if (umbral != null) {
@@ -133,6 +211,13 @@ public class UmbralService {
         }
     }
     
+    /**
+     * Obtiene todos los umbrales configurados para un dispositivo específico.
+     * 
+     * @param dispositivoId Identificador único del dispositivo a consultar
+     * @return List<Umbral> con todos los umbrales del dispositivo
+     * @see UmbralRepository#findByDispositivoId(Long)
+     */
     public List<Umbral> obtenerUmbralesPorDispositivo(Long dispositivoId) {
         return umbralRepository.findByDispositivoId(dispositivoId);
     }
