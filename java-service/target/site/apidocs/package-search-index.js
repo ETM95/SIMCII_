@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"com.simcii.javaservice"},{"l":"com.simcii.javaservice.config"},{"l":"com.simcii.javaservice.controllers"},{"l":"com.simcii.javaservice.models"},{"l":"com.simcii.javaservice.repositories"},{"l":"com.simcii.javaservice.services"}];updateSearchResults();

@@ -1,0 +1,6 @@
+com.simcii.javaservice
+com.simcii.javaservice.config
+com.simcii.javaservice.controllers
+com.simcii.javaservice.models
+com.simcii.javaservice.repositories
+com.simcii.javaservice.services
