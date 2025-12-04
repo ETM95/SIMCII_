@@ -1,4 +1,3 @@
-// ...existing code...
 package com.simcii.javaservice.services;
 
 import com.simcii.javaservice.models.Dispositivo;

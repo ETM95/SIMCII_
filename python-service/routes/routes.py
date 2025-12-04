@@ -41,28 +41,27 @@ def exportar_reporte_csv():
         # Debug: Verificar data_store
         logger.info(f"data_store existe: {hasattr(data_store, 'alertas')}")
         
-        if hasattr(data_store, 'alertas'):
-            logger.info(f"Cantidad de alertas: {len(data_store.alertas) if data_store.alertas else 0}")
+        if hasattr(data_store, 'alertas') and data_store.alertas:
+            logger.info(f"Cantidad de alertas: {len(data_store.alertas)}")
             
-            if data_store.alertas:
-                for alerta in data_store.alertas:
-                    logger.info(f"Procesando alerta: {getattr(alerta, 'id', 'N/A')}")
-                    
-                    writer.writerow([
-                        getattr(alerta, 'id', 'N/A'),
-                        getattr(alerta, 'dispositivo_id', 'N/A'),
-                        getattr(alerta, 'dispositivo_nombre', 'N/A'),
-                        getattr(alerta, 'zona', 'N/A'),
-                        getattr(alerta, 'tipo_alerta', 'N/A'),
-                        getattr(alerta, 'valor', 'N/A'),
-                        getattr(alerta, 'umbral_min', 'N/A'),
-                        getattr(alerta, 'umbral_max', 'N/A'),
-                        getattr(alerta, 'mensaje', 'N/A'),
-                        getattr(alerta, 'fecha_creacion', datetime.now().isoformat()),
-                        "Si" if getattr(alerta, 'activa', False) else "No",
-                        getattr(alerta, 'nivel_criticidad', 'N/A')
-                    ])
-                    alertas_existentes = True
+            for alerta in data_store.alertas:
+                logger.info(f"Procesando alerta: {getattr(alerta, 'id', 'N/A')}")
+                
+                writer.writerow([
+                    getattr(alerta, 'id', 'N/A'),
+                    getattr(alerta, 'dispositivo_id', 'N/A'),
+                    getattr(alerta, 'dispositivo_nombre', 'N/A'),
+                    getattr(alerta, 'zona', 'N/A'),
+                    getattr(alerta, 'tipo_alerta', 'N/A'),
+                    getattr(alerta, 'valor', 'N/A'),
+                    getattr(alerta, 'umbral_min', 'N/A'),
+                    getattr(alerta, 'umbral_max', 'N/A'),
+                    getattr(alerta, 'mensaje', 'N/A'),
+                    getattr(alerta, 'fecha_creacion', datetime.now().isoformat()),
+                    "Si" if getattr(alerta, 'activa', False) else "No",
+                    getattr(alerta, 'nivel_criticidad', 'N/A')
+                ])
+                alertas_existentes = True
         
         # Si no hay alertas válidas, escribir una fila informativa
         if not alertas_existentes:

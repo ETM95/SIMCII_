@@ -3,60 +3,34 @@ package com.simcii.javaservice.controllers;
 import com.simcii.javaservice.models.Dispositivo;
 import com.simcii.javaservice.services.DispositivoService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
-/**
- * Controlador REST para la gestión integral de dispositivos en el sistema SIMCII.
- * Expone operaciones CRUD completas para todos los tipos de dispositivos (sensores y actuadores)
- * que monitorean y controlan las condiciones ambientales del invernadero.
- * 
- * @author Jonathan Vega
- * @version 1.0
- * @since 2025
- * @RestController
- * @RequestMapping("/api/dispositivos")
- * @CrossOrigin(origins = "*")
- * @see Dispositivo
- * @see DispositivoService
- */
 @RestController
 @RequestMapping("/api/dispositivos")
 @CrossOrigin(origins = "*")
 public class DispositivoController {
     
-    /**
-     * Servicio de negocio para la gestión de dispositivos.
-     * Inyectado automáticamente por Spring Framework.
-     */
+    private static final Logger logger = LoggerFactory.getLogger(DispositivoController.class);
+    
     @Autowired
     private DispositivoService dispositivoService;
     
-    /**
-     * Obtiene la lista completa de todos los dispositivos registrados en el sistema.
-     * Incluye tanto sensores como actuadores de todas las zonas del invernadero.
-     * 
-     * @return List<Dispositivo> con todos los dispositivos disponibles
-     * @HTTP 200 Éxito, devuelve la lista de dispositivos (puede estar vacía)
-     * @see DispositivoService#findAll()
-     */
     @GetMapping
     public List<Dispositivo> getAllDispositivos() {
+        logger.info("Obteniendo todos los dispositivos");
         return dispositivoService.findAll();
     }
     
-    /**
-     * Obtiene un dispositivo específico por su identificador único.
-     * 
-     * @param id Identificador único del dispositivo a consultar
-     * @return ResponseEntity<Dispositivo> con el dispositivo encontrado o error 404
-     * @HTTP 200 Éxito, devuelve el dispositivo solicitado
-     * @HTTP 404 No se encontró el dispositivo con el ID especificado
-     * @see DispositivoService#findById(Long)
-     */
     @GetMapping("/{id}")
     public ResponseEntity<Dispositivo> getDispositivoById(@PathVariable Long id) {
         Optional<Dispositivo> dispositivo = dispositivoService.findById(id);
@@ -64,59 +38,116 @@ public class DispositivoController {
                          .orElse(ResponseEntity.notFound().build());
     }
     
-    /**
-     * Crea un nuevo dispositivo en el sistema.
-     * Soporta la creación de cualquier tipo de dispositivo (sensor o actuador)
-     * con la configuración inicial proporcionada en el cuerpo de la petición.
-     * 
-     * @param dispositivo Objeto Dispositivo con los datos del nuevo dispositivo
-     * @return Dispositivo el dispositivo creado con su ID asignado
-     * @HTTP 200 Éxito, dispositivo creado correctamente
-     * @HTTP 400 Datos del dispositivo inválidos o incompletos
-     * @see DispositivoService#save(Dispositivo)
-     */
     @PostMapping
-    public Dispositivo createDispositivo(@RequestBody Dispositivo dispositivo) {
-        return dispositivoService.save(dispositivo);
-    }
-    
-    /**
-     * Actualiza la información de un dispositivo existente.
-     * Permite modificar propiedades como nombre, descripción, ubicación y estado
-     * de cualquier dispositivo registrado en el sistema.
-     * 
-     * @param id Identificador único del dispositivo a actualizar
-     * @param dispositivoDetails Objeto Dispositivo con los nuevos datos
-     * @return ResponseEntity<Dispositivo> con el dispositivo actualizado o error 404
-     * @HTTP 200 Éxito, dispositivo actualizado correctamente
-     * @HTTP 404 No se encontró el dispositivo con el ID especificado
-     * @HTTP 400 Datos de actualización inválidos
-     * @see DispositivoService#update(Long, Dispositivo)
-     */
-    @PutMapping("/{id}")
-    public ResponseEntity<Dispositivo> updateDispositivo(@PathVariable Long id, @RequestBody Dispositivo dispositivoDetails) {
+    public ResponseEntity<?> createDispositivo(@RequestBody Dispositivo dispositivo) {
         try {
-            Dispositivo updatedDispositivo = dispositivoService.update(id, dispositivoDetails);
-            return ResponseEntity.ok(updatedDispositivo);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+            logger.info("Creando dispositivo: {}", dispositivo);
+            
+            // Validaciones básicas
+            if (dispositivo.getNombre() == null || dispositivo.getNombre().trim().isEmpty()) {
+                logger.warn("Intento de crear dispositivo sin nombre");
+                return ResponseEntity.badRequest().body("El nombre es requerido");
+            }
+            if (dispositivo.getUbicacion() == null || dispositivo.getUbicacion().trim().isEmpty()) {
+                logger.warn("Intento de crear dispositivo sin ubicación");
+                return ResponseEntity.badRequest().body("La ubicación es requerida");
+            }
+            
+            // El tipo se determina automáticamente por la clase concreta
+            // gracias a @JsonTypeInfo, no necesitamos validarlo manualmente
+            
+            // Asegurar que activo tenga valor por defecto
+            if (dispositivo.getActivo() == null) {
+                dispositivo.setActivo(true);
+            }
+            
+            Dispositivo savedDispositivo = dispositivoService.save(dispositivo);
+            logger.info("Dispositivo creado exitosamente: {}", savedDispositivo.getId());
+            
+            return ResponseEntity.ok(savedDispositivo);
+            
+        } catch (Exception e) {
+            logger.error("Error al crear dispositivo: {}", e.getMessage());
+            return ResponseEntity.badRequest().body("Error interno del servidor: " + e.getMessage());
         }
     }
     
-    /**
-     * Elimina un dispositivo del sistema.
-     * Remove permanentemente un dispositivo y todas sus asociaciones
-     * (lecturas, umbrales) según la configuración de cascada.
-     * 
-     * @param id Identificador único del dispositivo a eliminar
-     * @return ResponseEntity<?> confirmación de eliminación exitosa
-     * @HTTP 200 Éxito, dispositivo eliminado correctamente
-     * @HTTP 404 No se encontró el dispositivo con el ID especificado
-     * @see DispositivoService#deleteById(Long)
-     */
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateDispositivo(@PathVariable Long id, @RequestBody Map<String, Object> updates) {
+        try {
+            logger.info("Actualizando dispositivo ID: {} con datos: {}", id, updates);
+            
+            Optional<Dispositivo> dispositivoOpt = dispositivoService.findById(id);
+            if (dispositivoOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body("{\"message\": \"Dispositivo no encontrado\"}");
+            }
+            
+            Dispositivo dispositivo = dispositivoOpt.get();
+            
+            // Actualizar solo los campos que vienen en el request
+            if (updates.containsKey("nombre")) {
+                dispositivo.setNombre((String) updates.get("nombre"));
+            }
+            if (updates.containsKey("descripcion")) {
+                Object descripcionObj = updates.get("descripcion");
+                if (descripcionObj == null) {
+                    dispositivo.setDescripcion(null);
+                } else {
+                    dispositivo.setDescripcion(descripcionObj.toString());
+                }
+            }
+            if (updates.containsKey("ubicacion")) {
+                dispositivo.setUbicacion((String) updates.get("ubicacion"));
+            }
+            if (updates.containsKey("activo")) {
+                Object activoObj = updates.get("activo");
+                if (activoObj instanceof Boolean) {
+                    dispositivo.setActivo((Boolean) activoObj);
+                } else if (activoObj instanceof String) {
+                    dispositivo.setActivo(Boolean.parseBoolean((String) activoObj));
+                }
+            }
+            
+            // Siempre actualizar la fecha de modificación
+            dispositivo.setFechaActualizacion(LocalDateTime.now());
+            
+            Dispositivo updatedDispositivo = dispositivoService.save(dispositivo);
+            return ResponseEntity.ok(updatedDispositivo);
+            
+        } catch (Exception e) {
+            logger.error("Error al actualizar dispositivo {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body("{\"message\": \"Error al actualizar: " + e.getMessage() + "\"}");
+        }
+    }
+    
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteDispositivo(@PathVariable Long id) {
-        dispositivoService.deleteById(id);
-        return ResponseEntity.ok().build();
+        try {
+            logger.info("Marcando dispositivo como inactivo (DELETE) ID: {}", id);
+            
+            Optional<Dispositivo> dispositivoOpt = dispositivoService.findById(id);
+            if (dispositivoOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body("{\"message\": \"Dispositivo no encontrado\"}");
+            }
+            
+            Dispositivo dispositivo = dispositivoOpt.get();
+            
+            // Marcar como inactivo en lugar de eliminar
+            dispositivo.setActivo(false);
+            dispositivo.setFechaActualizacion(LocalDateTime.now());
+            
+            Dispositivo updated = dispositivoService.save(dispositivo);
+            logger.info("Dispositivo marcado como inactivo exitosamente: {}", id);
+            
+            return ResponseEntity.ok().body("{\"message\": \"Dispositivo desactivado correctamente\", \"id\": " + id + "}");
+            
+        } catch (Exception e) {
+            logger.error("Error al marcar dispositivo como inactivo {}: ", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("{\"message\": \"Error: " + e.getMessage() + "\"}");
+        }
     }
 }
